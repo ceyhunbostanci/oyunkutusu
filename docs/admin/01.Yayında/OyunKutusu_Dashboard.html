@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OyunKutusu AI Komuta Merkezi v1.0</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Mermaid JS (Diyagramlar) -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <!-- Chart.js (Grafikler) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- FontAwesome (İkonlar) -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg-dark: #0f172a;
+            --card-bg: #1e293b;
+            --accent: #3b82f6; /* Blue-500 */
+            --success: #10b981; /* Emerald-500 */
+            --danger: #ef4444; /* Red-500 */
+            --warning: #f59e0b; /* Amber-500 */
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-dark);
+            color: #f1f5f9;
+        }
+
+        .mono { font-family: 'JetBrains Mono', monospace; }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+        /* Kart Efektleri */
+        .dashboard-card {
+            background-color: var(--card-bg);
+            border: 1px solid #334155;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+        }
+        .dashboard-card:hover {
+            border-color: var(--accent);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
+            transform: translateY(-2px);
+        }
+
+        /* Terminal Efektleri */
+        .terminal-window {
+            background-color: #020617;
+            border: 1px solid #1e293b;
+            font-family: 'JetBrains Mono', monospace;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+        }
+        .typing-cursor::after {
+            content: '▋';
+            animation: blink 1s step-start infinite;
+            color: var(--accent);
+        }
+        @keyframes blink { 50% { opacity: 0; } }
+
+        /* Buton Efektleri */
+        .btn-action {
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s;
+        }
+        .btn-action:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            filter: grayscale(100%);
+        }
+        .btn-action:not(:disabled):hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.4);
+        }
+        .progress-bar-shine {
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            width: 50%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: -50%;
+            animation: shine 2s infinite;
+        }
+        @keyframes shine { 100% { left: 150%; } }
+
+        /* Status Dot Animation */
+        .status-dot {
+            height: 10px; width: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+            animation: pulse-green 2s infinite;
+        }
+        @keyframes pulse-green {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+    </style>
+</head>
+<body class="p-4 md:p-6 min-h-screen">
+
+    <!-- Header -->
+    <header class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 border-b border-slate-700 pb-6">
+        <div>
+            <div class="flex items-center gap-3">
+                <i class="fas fa-cube text-4xl text-blue-500"></i>
+                <div>
+                    <h1 class="text-3xl font-bold tracking-tight text-white">OyunKutusu <span class="text-blue-500 font-light">AI Komuta Merkezi</span></h1>
+                    <p class="text-slate-400 text-sm mt-1 flex items-center gap-2">
+                        <span class="bg-blue-900/30 text-blue-300 px-2 py-0.5 rounded text-xs border border-blue-800">v1.0.0</span>
+                        <span class="text-slate-500">|</span>
+                        <span>Yönetici: <strong class="text-white">Ceyhun Bostancı</strong></span>
+                        <span class="text-slate-500">|</span>
+                        <span>Hedef: <strong class="text-white">Android (Unity + Nakama)</strong></span>
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-4">
+            <div class="flex flex-col items-end">
+                <div class="flex items-center gap-2">
+                    <span class="status-dot bg-green-500"></span>
+                    <span class="text-xs font-bold text-green-400 uppercase tracking-wider">AI AGENT: AKTİF</span>
+                </div>
+                <div class="text-xs text-slate-500 mt-1 font-mono">Claude 3.5 + ChatGPT 5.2</div>
+            </div>
+            <button onclick="resetSimulation()" class="bg-slate-800 hover:bg-red-900/40 text-slate-300 hover:text-red-400 border border-slate-700 hover:border-red-800 px-4 py-2 rounded-lg transition text-sm flex items-center gap-2">
+                <i class="fas fa-power-off"></i> Sıfırla
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Grid -->
+    <div class="grid grid-cols-12 gap-6">
+
+        <!-- Left Column: Controls & Status -->
+        <div class="col-span-12 lg:col-span-8 space-y-6">
+
+            <!-- Phase Execution Card -->
+            <div class="dashboard-card p-6 relative overflow-hidden">
+                <div class="absolute top-0 right-0 p-4 opacity-10">
+                    <i class="fas fa-microchip text-9xl"></i>
+                </div>
+                
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                        <i class="fas fa-play-circle text-blue-400"></i>
+                        Otonom İcra Paneli
+                    </h2>
+                    <span id="systemStatus" class="px-3 py-1 bg-slate-700 text-slate-300 text-xs font-bold rounded-full border border-slate-600">BEKLEMEDE</span>
+                </div>
+
+                <!-- Progress Bar -->
+                <div class="mb-8">
+                    <div class="flex justify-between text-xs text-slate-400 mb-2 font-mono">
+                        <span>BAŞLANGIÇ</span>
+                        <span id="progressText">0%</span>
+                        <span>MVP (FAZ 3)</span>
+                    </div>
+                    <div class="w-full bg-slate-800 rounded-full h-3 border border-slate-700 relative overflow-hidden">
+                        <div id="mainProgressBar" class="bg-blue-600 h-full rounded-full transition-all duration-1000 relative" style="width: 0%">
+                            <div class="progress-bar-shine"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Phase Buttons -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <!-- Faz 0 -->
+                    <button id="btnPhase0" onclick="runPhase(0)" class="btn-action group flex flex-col items-center justify-center p-4 bg-slate-800 rounded-xl border border-slate-600 hover:border-blue-500 hover:bg-slate-750">
+                        <div class="w-12 h-12 rounded-full bg-slate-700 group-hover:bg-blue-900/30 flex items-center justify-center mb-3 transition-colors border border-slate-600 group-hover:border-blue-500/50">
+                            <i class="fas fa-server text-xl text-slate-400 group-hover:text-blue-400"></i>
+                        </div>
+                        <span class="text-sm font-bold text-white mb-1">FAZ 0</span>
+                        <span class="text-xs text-slate-500 text-center">Altyapı & Kurulum</span>
+                        <div id="status0" class="mt-2 text-[10px] font-mono text-slate-600">BEKLİYOR</div>
+                    </button>
+
+                    <!-- Faz 1 -->
+                    <button id="btnPhase1" onclick="runPhase(1)" disabled class="btn-action group flex flex-col items-center justify-center p-4 bg-slate-800 rounded-xl border border-slate-600 hover:border-blue-500 hover:bg-slate-750">
+                        <div class="w-12 h-12 rounded-full bg-slate-700 group-hover:bg-blue-900/30 flex items-center justify-center mb-3 transition-colors border border-slate-600 group-hover:border-blue-500/50">
+                            <i class="fas fa-network-wired text-xl text-slate-400 group-hover:text-blue-400"></i>
+                        </div>
+                        <span class="text-sm font-bold text-white mb-1">FAZ 1</span>
+                        <span class="text-xs text-slate-500 text-center">Lobi & Bağlantı</span>
+                        <div id="status1" class="mt-2 text-[10px] font-mono text-slate-600">KİLİTLİ</div>
+                    </button>
+
+                    <!-- Faz 2 -->
+                    <button id="btnPhase2" onclick="runPhase(2)" disabled class="btn-action group flex flex-col items-center justify-center p-4 bg-slate-800 rounded-xl border border-slate-600 hover:border-blue-500 hover:bg-slate-750">
+                        <div class="w-12 h-12 rounded-full bg-slate-700 group-hover:bg-blue-900/30 flex items-center justify-center mb-3 transition-colors border border-slate-600 group-hover:border-blue-500/50">
+                            <i class="fas fa-chess-king text-xl text-slate-400 group-hover:text-blue-400"></i>
+                        </div>
+                        <span class="text-sm font-bold text-white mb-1">FAZ 2</span>
+                        <span class="text-xs text-slate-500 text-center">Batak Mantığı</span>
+                        <div id="status2" class="mt-2 text-[10px] font-mono text-slate-600">KİLİTLİ</div>
+                    </button>
+
+                    <!-- Faz 3 -->
+                    <button id="btnPhase3" onclick="runPhase(3)" disabled class="btn-action group flex flex-col items-center justify-center p-4 bg-slate-800 rounded-xl border border-slate-600 hover:border-blue-500 hover:bg-slate-750">
+                        <div class="w-12 h-12 rounded-full bg-slate-700 group-hover:bg-blue-900/30 flex items-center justify-center mb-3 transition-colors border border-slate-600 group-hover:border-blue-500/50">
+                            <i class="fas fa-users text-xl text-slate-400 group-hover:text-blue-400"></i>
+                        </div>
+                        <span class="text-sm font-bold text-white mb-1">FAZ 3</span>
+                        <span class="text-xs text-slate-500 text-center">Online & Sync</span>
+                        <div id="status3" class="mt-2 text-[10px] font-mono text-slate-600">KİLİTLİ</div>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Terminal Output -->
+            <div class="dashboard-card h-[400px] flex flex-col overflow-hidden">
+                <div class="bg-slate-900 p-3 border-b border-slate-700 flex justify-between items-center">
+                    <div class="flex items-center gap-2">
+                        <i class="fas fa-terminal text-slate-400 text-xs"></i>
+                        <span class="text-xs font-mono text-slate-300">root@ai-agent:~</span>
+                    </div>
+                    <div class="flex gap-1.5">
+                        <div class="w-2.5 h-2.5 rounded-full bg-red-500/50"></div>
+                        <div class="w-2.5 h-2.5 rounded-full bg-yellow-500/50"></div>
+                        <div class="w-2.5 h-2.5 rounded-full bg-green-500/50"></div>
+                    </div>
+                </div>
+                <div id="terminal" class="flex-1 bg-[#020617] p-4 overflow-y-auto font-mono text-xs space-y-1 text-slate-300">
+                    <div class="text-slate-500"># System initialized...</div>
+                    <div class="text-slate-500"># Connected to Claude Sonnet 4.5 API [OK]</div>
+                    <div class="text-slate-500"># Connected to ChatGPT 5.2 API [OK]</div>
+                    <div class="text-blue-400"># Waiting for user authorization to start Phase 0...</div>
+                    <div class="text-blue-400 typing-cursor">_</div>
+                </div>
+            </div>
+
+            <!-- Roadmap (Mermaid) -->
+            <div class="dashboard-card p-6 overflow-hidden">
+                <h2 class="text-lg font-bold text-white mb-4"><i class="fas fa-map-signs mr-2 text-purple-400"></i>Dinamik Yol Haritası</h2>
+                <div class="mermaid">
+                    gantt
+                        title OyunKutusu Geliştirme Takvimi
+                        dateFormat  YYYY-MM-DD
+                        axisFormat  %d-%b
+                        
+                        section Faz 0 (Altyapı)
+                        Docker & Nakama Setup    :crit, p0, 2025-12-29, 1d
+                        Unity Proje Kurulumu     :active, p0_2, after p0, 1d
+
+                        section Faz 1 (Bağlantı)
+                        Lobby & Auth Sistemi     :p1, after p0_2, 2d
+                        UI İskeleti (Android)    :p1_2, after p1, 2d
+
+                        section Faz 2 (Oyun)
+                        Kart Dağıtım Mantığı     :p2, after p1_2, 3d
+                        Bot Yapay Zekası         :p2_2, after p2, 2d
+
+                        section Faz 3 (Online)
+                        State Senkronizasyonu    :p3, after p2_2, 3d
+                        Anti-Cheat & Release     :p3_2, after p3, 2d
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Right Column: Metrics & Alerts -->
+        <div class="col-span-12 lg:col-span-4 space-y-6">
+
+            <!-- Critical Alerts / Golden Rules -->
+            <div class="dashboard-card p-6 border-l-4 border-l-red-500 bg-red-900/10">
+                <h3 class="text-lg font-bold text-red-400 mb-3 flex items-center">
+                    <i class="fas fa-exclamation-triangle mr-2"></i>KIRMIZI ÇİZGİLER
+                </h3>
+                <ul class="space-y-2 text-sm text-slate-300">
+                    <li class="flex items-start gap-2">
+                        <i class="fas fa-times text-red-500 mt-1"></i>
+                        <span>Photon/Mirror ASLA kullanılmayacak. Sadece <strong>Nakama</strong>.</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <i class="fas fa-times text-red-500 mt-1"></i>
+                        <span>Yarım kod yok. Tam dosya verilecek.</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <i class="fas fa-times text-red-500 mt-1"></i>
+                        <span>Batak bitmeden Okey'e geçilmeyecek.</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <i class="fas fa-check text-green-500 mt-1"></i>
+                        <span>Hedef: Tek VPS, Düşük Maliyet ($6/ay).</span>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Health Stats -->
+            <div class="dashboard-card p-6">
+                <h3 class="text-lg font-bold text-white mb-4">Proje Sağlığı (DoD)</h3>
+                <canvas id="healthChart" height="200"></canvas>
+                <div class="mt-4 grid grid-cols-2 gap-2 text-center">
+                    <div class="bg-slate-800 p-2 rounded">
+                        <div class="text-xs text-slate-500">Crash-Free</div>
+                        <div class="text-green-400 font-mono font-bold">99.9%</div>
+                    </div>
+                    <div class="bg-slate-800 p-2 rounded">
+                        <div class="text-xs text-slate-500">Match Success</div>
+                        <div class="text-blue-400 font-mono font-bold">98.2%</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Kanban Board -->
+            <div class="dashboard-card p-6 flex-1">
+                <h3 class="text-lg font-bold text-white mb-4">Görev Kuyruğu</h3>
+                <div class="space-y-4">
+                    <!-- Todo -->
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-500 uppercase mb-2">Bekleyen (Sıradaki)</h4>
+                        <div id="kanbanTodo" class="space-y-2 min-h-[50px]">
+                            <div class="bg-slate-800 p-2 rounded text-xs border-l-2 border-slate-600 text-slate-400">F0-1: Docker Kontrolü</div>
+                            <div class="bg-slate-800 p-2 rounded text-xs border-l-2 border-slate-600 text-slate-400">F0-4: Nakama Başlatma</div>
+                            <div class="bg-slate-800 p-2 rounded text-xs border-l-2 border-slate-600 text-slate-400">F1-1: Unity Android Build</div>
+                        </div>
+                    </div>
+                    <!-- In Progress -->
+                    <div>
+                        <h4 class="text-xs font-bold text-blue-500 uppercase mb-2">İşleniyor (AI Agent)</h4>
+                        <div id="kanbanProgress" class="space-y-2 min-h-[50px]">
+                            <!-- Dinamik olarak dolacak -->
+                        </div>
+                    </div>
+                    <!-- Done -->
+                    <div>
+                        <h4 class="text-xs font-bold text-green-500 uppercase mb-2">Tamamlandı</h4>
+                        <div id="kanbanDone" class="space-y-2 min-h-[50px]">
+                            <!-- Dinamik olarak dolacak -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Script Logic -->
+    <script>
+        // --- Yapılandırma ---
+        mermaid.initialize({ startOnLoad: true, theme: 'dark', fontFamily: 'Inter' });
+
+        // Chart.js Init
+        const ctx = document.getElementById('healthChart').getContext('2d');
+        const healthChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Tamamlanan', 'Kalan', 'Risk'],
+                datasets: [{
+                    data: [0, 100, 0],
+                    backgroundColor: ['#10b981', '#1e293b', '#ef4444'],
+                    borderWidth: 0,
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                cutout: '70%',
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+
+        // Runbook Data (AI Agent Logic Simulation)
+        const runbooks = {
+            0: [
+                { msg: "Checking System Requirements (Virtualization)...", delay: 800 },
+                { msg: "F0-1 [OK]: Virtualization is Enabled.", delay: 400, type: 'success' },
+                { msg: "Executing: docker-compose up -d (Postgres + Nakama)", delay: 1200 },
+                { msg: "Waiting for Nakama API on port 7350...", delay: 1500 },
+                { msg: "F0-4 [OK]: Nakama Server is Healthy.", delay: 500, type: 'success' },
+                { msg: "Initializing Unity Project (2D Mobile Template)...", delay: 1000 },
+                { msg: "Importing Nakama SDK via Package Manager...", delay: 800 },
+                { msg: "F0-6 [OK]: SDK Integrated. No Errors.", delay: 400, type: 'success' },
+                { msg: "FAZ 0 TAMAMLANDI. Altyapı Hazır.", delay: 200, type: 'finish' }
+            ],
+            1: [
+                { msg: "Starting Client Authentication (Device ID)...", delay: 800 },
+                { msg: "F1-1 [OK]: Session Token Generated.", delay: 400, type: 'success' },
+                { msg: "Creating Match Socket Connection...", delay: 600 },
+                { msg: "Connecting 2nd Virtual Client for Testing...", delay: 1000 },
+                { msg: "F1-2 [OK]: Presence detected (2 Clients).", delay: 500, type: 'success' },
+                { msg: "Configuring Android Build Settings...", delay: 1200 },
+                { msg: "FAZ 1 TAMAMLANDI. Bağlantı Kuruldu.", delay: 200, type: 'finish' }
+            ],
+            2: [
+                { msg: "Generating Deck (Fisher-Yates Shuffle Algorithm)...", delay: 1000 },
+                { msg: "Validating: 52 Cards, Unique IDs.", delay: 500, type: 'success' },
+                { msg: "Testing 'Trump Break' logic...", delay: 800 },
+                { msg: "F2-2 [OK]: Illegal move rejected by server.", delay: 400, type: 'success' },
+                { msg: "Simulating full game loop (offline)...", delay: 1500 },
+                { msg: "FAZ 2 TAMAMLANDI. Oyun Mantığı Doğrulandı.", delay: 200, type: 'finish' }
+            ],
+            3: [
+                { msg: "Porting logic to Server (TypeScript)...", delay: 1500 },
+                { msg: "Deploying Match Handler to Docker Container...", delay: 2000 },
+                { msg: "Testing Reconnect Mechanism (Disconnecting Wifi)...", delay: 1000 },
+                { msg: "F3-3 [OK]: Client recovered game state successfully.", delay: 600, type: 'success' },
+                { msg: "Building final Android APK...", delay: 2500 },
+                { msg: "PROJE TAMAMLANDI. MVP HAZIR.", delay: 200, type: 'finish' }
+            ]
+        };
+
+        // UI Helpers
+        const terminal = document.getElementById('terminal');
+        const progressBar = document.getElementById('mainProgressBar');
+        const progressText = document.getElementById('progressText');
+        const systemStatus = document.getElementById('systemStatus');
+
+        function log(msg, type = 'info') {
+            const div = document.createElement('div');
+            const timestamp = new Date().toLocaleTimeString('tr-TR', { hour12: false });
+            
+            div.className = "font-mono text-xs mb-1 pl-2 border-l-2 border-transparent";
+            div.innerHTML = `<span class="opacity-30 mr-2">[${timestamp}]</span> ${msg}`;
+
+            if (type === 'success') {
+                div.classList.add('text-green-400', 'border-green-500', 'bg-green-900/10');
+                div.innerHTML += ' <i class="fas fa-check ml-1"></i>';
+            } else if (type === 'error') {
+                div.classList.add('text-red-400', 'border-red-500');
+            } else if (type === 'finish') {
+                div.classList.add('text-blue-300', 'border-blue-500', 'font-bold', 'py-2', 'mt-2', 'mb-2');
+                div.innerHTML = `>>> ${msg}`;
+            } else {
+                div.classList.add('text-slate-300');
+            }
+
+            // Remove typing cursor from previous last element
+            const cursors = terminal.getElementsByClassName('typing-cursor');
+            while(cursors.length > 0){ cursors[0].classList.remove('typing-cursor'); }
+
+            // Add cursor to this one
+            div.classList.add('typing-cursor');
+
+            terminal.appendChild(div);
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+
+        async function runPhase(phaseId) {
+            const btn = document.getElementById(`btnPhase${phaseId}`);
+            if (btn.disabled) return;
+
+            // Lock UI
+            btn.disabled = true;
+            btn.classList.add('ring-2', 'ring-blue-500', 'animate-pulse');
+            systemStatus.innerText = `FAZ ${phaseId} ÇALIŞIYOR...`;
+            systemStatus.className = "px-3 py-1 bg-blue-600 text-white text-xs font-bold rounded-full animate-pulse";
+            
+            // Move Todo items to In Progress
+            updateKanban(phaseId, 'running');
+
+            const steps = runbooks[phaseId];
+            
+            // Execute Steps
+            for (let step of steps) {
+                await new Promise(r => setTimeout(r, step.delay));
+                log(step.msg, step.type);
+            }
+
+            // Phase Complete
+            completePhase(phaseId);
+        }
+
+        function completePhase(phaseId) {
+            const btn = document.getElementById(`btnPhase${phaseId}`);
+            const statusTxt = document.getElementById(`status${phaseId}`);
+            
+            btn.classList.remove('animate-pulse', 'ring-2', 'ring-blue-500');
+            btn.classList.replace('border-slate-600', 'border-green-500');
+            
+            statusTxt.innerText = "TAMAMLANDI";
+            statusTxt.classList.replace('text-slate-600', 'text-green-500');
+            statusTxt.classList.add('font-bold');
+
+            // Update Progress
+            const progress = (phaseId + 1) * 25;
+            progressBar.style.width = `${progress}%`;
+            progressText.innerText = `${progress}%`;
+            
+            // Update Chart
+            healthChart.data.datasets[0].data = [progress, 100 - progress, 0];
+            healthChart.update();
+
+            // System Status Back to Idle or Next
+            systemStatus.innerText = "BEKLEMEDE";
+            systemStatus.className = "px-3 py-1 bg-slate-700 text-slate-300 text-xs font-bold rounded-full border border-slate-600";
+
+            // Update Kanban
+            updateKanban(phaseId, 'done');
+
+            // Unlock Next Phase
+            if (phaseId < 3) {
+                const nextBtn = document.getElementById(`btnPhase${phaseId + 1}`);
+                const nextStatus = document.getElementById(`status${phaseId + 1}`);
+                nextBtn.disabled = false;
+                nextStatus.innerText = "HAZIR";
+                nextStatus.classList.replace('text-slate-600', 'text-blue-400');
+                
+                log(`>>> SİSTEM HAZIR: FAZ ${phaseId+1} BAŞLATILABİLİR.`, 'warning');
+            } else {
+                log("!!! TÜM SİSTEMLER ÇEVRİMİÇİ. OYUNKUTUSU V1.0 HAZIR. !!!", 'success');
+                systemStatus.innerText = "CANLI (LIVE)";
+                systemStatus.className = "px-3 py-1 bg-green-600 text-white text-xs font-bold rounded-full";
+            }
+        }
+
+        function updateKanban(phaseId, state) {
+            const todo = document.getElementById('kanbanTodo');
+            const prog = document.getElementById('kanbanProgress');
+            const done = document.getElementById('kanbanDone');
+
+            const taskName = `Faz ${phaseId} Görevleri`;
+            const div = document.createElement('div');
+            div.className = "bg-slate-700 p-2 rounded text-xs border-l-2 text-white shadow-sm mb-2";
+            
+            if (state === 'running') {
+                // Clear old todos visually for simulation
+                if(phaseId === 0) todo.innerHTML = ''; 
+                div.className += " border-blue-500 animate-pulse";
+                div.innerText = `${taskName} Yürütülüyor...`;
+                prog.appendChild(div);
+            } else if (state === 'done') {
+                prog.innerHTML = ''; // Clear progress
+                div.className += " border-green-500 opacity-75";
+                div.innerText = `${taskName} Tamamlandı [OK]`;
+                done.appendChild(div);
+            }
+        }
+
+        function resetSimulation() {
+            location.reload();
+        }
+
+        // Auto-start welcome message
+        window.onload = () => {
+            setTimeout(() => {
+                log("AI Agent is ready. Waiting for command.", 'info');
+            }, 500);
+        };
+    </script>
+</body>
+</html>

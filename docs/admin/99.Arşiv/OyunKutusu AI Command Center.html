@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OyunKutusu AI Command Center</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Placeholder Comments Required by Prompt -->
+    <!-- Chosen Palette: Slate & Indigo (Light Theme). Background: Slate-50, Surface: White, Primary: Indigo-600, Text: Slate-800. Designed for clarity, professionalism, and long-term readability. -->
+    
+    <!-- Application Structure Plan: 
+         1. layout: Dashboard style with a fixed Sidebar for navigation and a main content area.
+         2. Sections:
+            - Dashboard: High-level overview, "Tek Doğru Yol" architecture visualization, and active status.
+            - Runbook (Execution): The core interactive engine. Allows the user to step through the F0-F3 loops defined in the PDF.
+            - Roadmap: Timeline view of the Master Plan phases.
+            - Metrics: KPI tracking and Cost analysis using Chart.js.
+            - Protocol: Rules, Risks, and Golden Standards.
+         3. Rationale: This structure separates strategic oversight (Roadmap/Metrics) from tactical execution (Runbook), allowing the user to switch between "Approver" and "Auditor" roles easily.
+    -->
+
+    <!-- Visualization & Content Choices:
+         - Architecture: CSS Grid/Flex based block diagram. Goal: Show the "One Right Way" stack clearly. (No SVG).
+         - Progress: Chart.js Doughnut chart. Goal: Visualize completion of the current Phase.
+         - KPIs: Chart.js Bar chart. Goal: Compare current metrics vs. Target Quality Gates (e.g., 99% Crash-free).
+         - Cost: Chart.js Line chart. Goal: Track projected costs against the 10-40 USD budget.
+         - Runbook Terminal: HTML/JS text manipulation. Goal: Simulate the "AI Agent" executing tasks and showing verification logs.
+    -->
+
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        
+        /* Custom Scrollbar for Terminal */
+        .terminal-scroll::-webkit-scrollbar {
+            width: 8px;
+        }
+        .terminal-scroll::-webkit-scrollbar-track {
+            background: #1e293b; 
+        }
+        .terminal-scroll::-webkit-scrollbar-thumb {
+            background: #475569; 
+            border-radius: 4px;
+        }
+
+        /* Chart Container Utilities */
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 100%;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .status-dot {
+            height: 10px;
+            width: 10px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 h-screen overflow-hidden flex flex-col md:flex-row">
+
+    <!-- Sidebar Navigation -->
+    <aside class="w-full md:w-64 bg-white border-r border-slate-200 flex-shrink-0 flex flex-col z-20 shadow-sm">
+        <div class="p-6 border-b border-slate-100">
+            <h1 class="text-xl font-bold text-slate-900 tracking-tight">OyunKutusu <span class="text-indigo-600">AI</span></h1>
+            <p class="text-xs text-slate-500 mt-1">Command Center v1.0</p>
+            <div class="mt-4 flex items-center gap-2 px-3 py-1 bg-emerald-50 text-emerald-700 rounded-full text-xs font-medium w-fit">
+                <span class="status-dot bg-emerald-500 animate-pulse"></span>
+                System Online
+            </div>
+        </div>
+
+        <nav class="flex-1 overflow-y-auto py-4 px-3 space-y-1">
+            <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-item w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md bg-indigo-50 text-indigo-700 transition-colors">
+                <span>📊</span> Genel Bakış
+            </button>
+            <button onclick="switchTab('runbook')" id="nav-runbook" class="nav-item w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors">
+                <span>🚀</span> Runbook (İşlem)
+            </button>
+            <button onclick="switchTab('roadmap')" id="nav-roadmap" class="nav-item w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors">
+                <span>🗺️</span> Yol Haritası
+            </button>
+            <button onclick="switchTab('metrics')" id="nav-metrics" class="nav-item w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors">
+                <span>📈</span> KPI & Maliyet
+            </button>
+            <button onclick="switchTab('protocol')" id="nav-protocol" class="nav-item w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors">
+                <span>🛡️</span> Protokol & Risk
+            </button>
+        </nav>
+
+        <div class="p-4 border-t border-slate-200">
+            <div class="bg-slate-900 rounded-lg p-3 text-white">
+                <h4 class="text-xs font-semibold text-slate-400 uppercase">Aktif Hedef</h4>
+                <p class="text-sm font-medium mt-1" id="sidebar-active-target">Faz 0: Kurulum</p>
+                <div class="w-full bg-slate-700 h-1.5 rounded-full mt-2">
+                    <div class="bg-indigo-500 h-1.5 rounded-full" style="width: 25%" id="sidebar-progress"></div>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 overflow-y-auto p-4 md:p-8 relative scroll-smooth" id="main-content">
+        
+        <!-- DASHBOARD SECTION -->
+        <section id="dashboard" class="tab-content fade-in space-y-6">
+            <div class="flex justify-between items-end">
+                <div>
+                    <h2 class="text-2xl font-bold text-slate-900">Proje Durum Paneli</h2>
+                    <p class="text-slate-500 mt-1">Master Proje Dokümanı & Runbook Özeti</p>
+                </div>
+                <div class="text-right hidden sm:block">
+                    <p class="text-sm font-medium text-slate-900">Tarih: <span class="font-normal text-slate-600">27.12.2025</span></p>
+                    <p class="text-sm font-medium text-slate-900">Mod: <span class="font-normal text-slate-600">AI Agent Otonom</span></p>
+                </div>
+            </div>
+
+            <!-- Intro Text -->
+            <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                <p class="text-slate-700 leading-relaxed">
+                    Bu panel, <strong>OyunKutusu AI Agent</strong> projesinin merkezi kontrol birimidir. 
+                    Dokümanlarda belirtilen <strong>"Tek Doğru Yol"</strong> stratejisine uygun olarak, projenin anlık durumunu, 
+                    Tamamlanan Fazları ve kritik metrikleri buradan izleyebilirsiniz. Sistem şu an <strong>Faz 0</strong> aşamasındadır.
+                </p>
+            </div>
+
+            <!-- Top Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Card 1: Vision -->
+                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-10 h-10 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center text-xl">🎯</div>
+                        <h3 class="font-semibold text-slate-900">Tek Doğru Yol (MVP)</h3>
+                    </div>
+                    <ul class="space-y-2 text-sm text-slate-600">
+                        <li class="flex items-center gap-2"><span class="text-green-500">✓</span> <strong>Client:</strong> Unity 2022.3 LTS</li>
+                        <li class="flex items-center gap-2"><span class="text-green-500">✓</span> <strong>Backend:</strong> Nakama (Docker)</li>
+                        <li class="flex items-center gap-2"><span class="text-green-500">✓</span> <strong>DB:</strong> PostgreSQL</li>
+                        <li class="flex items-center gap-2"><span class="text-green-500">✓</span> <strong>Oyun:</strong> Batak (İhaleli)</li>
+                    </ul>
+                </div>
+
+                <!-- Card 2: DoD Status -->
+                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-10 h-10 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center text-xl">🚧</div>
+                        <h3 class="font-semibold text-slate-900">Aktif DoD (Faz 0)</h3>
+                    </div>
+                    <p class="text-sm text-slate-600 mb-4">Hedef: Nakama Console açılıyor + Unity proje + SDK entegre.</p>
+                    <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                        <div class="bg-amber-500 h-2 rounded-full" style="width: 60%"></div>
+                    </div>
+                    <p class="text-xs text-slate-400 mt-2 text-right">%60 Tamamlandı</p>
+                </div>
+
+                <!-- Card 3: Budget -->
+                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center text-xl">💰</div>
+                        <h3 class="font-semibold text-slate-900">Maliyet Hedefi</h3>
+                    </div>
+                    <div class="flex justify-between items-end">
+                        <span class="text-3xl font-bold text-slate-900">$12<span class="text-sm font-normal text-slate-500">/ay</span></span>
+                        <span class="text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-1 rounded">Hedef Tutuyor</span>
+                    </div>
+                    <p class="text-xs text-slate-500 mt-2">Band: $10 - $40 USD</p>
+                </div>
+            </div>
+
+            <!-- Architecture Viz -->
+            <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                <h3 class="font-semibold text-slate-900 mb-6 border-b border-slate-100 pb-2">Sistem Mimarisi (Faz 0-3)</h3>
+                
+                <div class="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-8 py-4">
+                    <!-- Client -->
+                    <div class="flex flex-col items-center">
+                        <div class="w-40 h-24 bg-slate-800 rounded-lg flex items-center justify-center text-white shadow-lg border-b-4 border-slate-600">
+                            <div class="text-center">
+                                <div class="font-bold">Unity Client</div>
+                                <div class="text-xs text-slate-400">2022.3 LTS</div>
+                            </div>
+                        </div>
+                        <div class="mt-2 text-xs font-medium bg-slate-100 px-2 py-1 rounded text-slate-600">Batak UI / Logic</div>
+                    </div>
+
+                    <!-- Arrow -->
+                    <div class="hidden md:flex flex-col items-center text-slate-400">
+                        <span class="text-xs font-mono mb-1">WebSocket / HTTP</span>
+                        <div class="h-0.5 w-16 bg-slate-300 relative">
+                            <div class="absolute right-0 top-1/2 -translate-y-1/2 w-2 h-2 border-t-2 border-r-2 border-slate-300 rotate-45"></div>
+                            <div class="absolute left-0 top-1/2 -translate-y-1/2 w-2 h-2 border-b-2 border-l-2 border-slate-300 rotate-45"></div>
+                        </div>
+                    </div>
+                    <div class="md:hidden text-slate-400">⬇️ ⬆️</div>
+
+                    <!-- Server Group -->
+                    <div class="p-4 border-2 border-dashed border-indigo-200 rounded-xl bg-indigo-50/50">
+                        <p class="text-xs text-indigo-500 font-bold mb-3 text-center uppercase tracking-wide">Docker Container</p>
+                        <div class="flex flex-col md:flex-row gap-4">
+                            <!-- Nakama -->
+                            <div class="w-40 h-24 bg-indigo-600 rounded-lg flex items-center justify-center text-white shadow-lg border-b-4 border-indigo-800">
+                                <div class="text-center">
+                                    <div class="font-bold">Nakama</div>
+                                    <div class="text-xs text-indigo-200">Game Server</div>
+                                </div>
+                            </div>
+
+                            <!-- DB Arrow -->
+                            <div class="flex items-center justify-center text-indigo-300">
+                                ↔️
+                            </div>
+
+                            <!-- Postgres -->
+                            <div class="w-40 h-24 bg-sky-600 rounded-lg flex items-center justify-center text-white shadow-lg border-b-4 border-sky-800">
+                                <div class="text-center">
+                                    <div class="font-bold">PostgreSQL</div>
+                                    <div class="text-xs text-sky-200">Database</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- RUNBOOK SECTION -->
+        <section id="runbook" class="tab-content hidden space-y-6">
+            <div class="flex justify-between items-center">
+                <h2 class="text-2xl font-bold text-slate-900">Runbook & Validasyon</h2>
+                <div class="flex gap-2">
+                    <button onclick="resetRunbook()" class="text-sm text-red-500 hover:text-red-700 font-medium px-3 py-1">Reset</button>
+                    <span class="bg-slate-100 text-slate-600 px-3 py-1 rounded text-sm font-medium">Aktif Faz: <span id="runbook-phase-badge">Faz 0</span></span>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm mb-4">
+                <p class="text-slate-700">
+                    Burada <strong>Runbook (Faz 0-3)</strong> dokümanındaki döngüleri simüle edebilirsiniz. 
+                    AI Agent prensiplerine göre, <strong>her adımda tek bir doğrulama</strong> yapılmadan bir sonraki adıma geçilemez.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[600px]">
+                <!-- Task List -->
+                <div class="bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col overflow-hidden h-full">
+                    <div class="p-4 bg-slate-50 border-b border-slate-200 font-semibold text-slate-700 flex justify-between">
+                        <span>Görev Listesi</span>
+                        <span class="text-xs bg-white border border-slate-300 px-2 py-0.5 rounded text-slate-500">Otomatik Mod</span>
+                    </div>
+                    <div class="overflow-y-auto p-4 space-y-3 flex-1" id="task-list">
+                        <!-- Tasks generated by JS -->
+                    </div>
+                </div>
+
+                <!-- Terminal -->
+                <div class="bg-slate-900 rounded-xl shadow-lg flex flex-col h-full overflow-hidden text-sm font-mono">
+                    <div class="bg-slate-800 px-4 py-2 flex items-center gap-2 border-b border-slate-700">
+                        <div class="flex gap-1.5">
+                            <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                        </div>
+                        <span class="text-slate-400 text-xs ml-2">agent@oyunkutusu:~/dev/ops</span>
+                    </div>
+                    <div class="p-4 text-green-400 flex-1 overflow-y-auto terminal-scroll" id="terminal-output">
+                        <div class="opacity-50 text-slate-500">Initializing AI Agent Connection...</div>
+                        <div class="opacity-50 text-slate-500">Loading Runbook v1...</div>
+                        <div><span class="text-blue-400">agent$</span> <span class="animate-pulse">_</span></div>
+                    </div>
+                    <div class="p-4 border-t border-slate-800 bg-slate-800/50">
+                        <button id="execute-btn" onclick="executeCurrentTask()" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                            Sonraki Adımı Başlat (Execute)
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ROADMAP SECTION -->
+        <section id="roadmap" class="tab-content hidden space-y-6">
+            <h2 class="text-2xl font-bold text-slate-900">Proje Yol Haritası</h2>
+            
+            <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                <p class="text-slate-700 mb-6">
+                    Master Proje Dokümanı'na göre faz planı. Kırmızı dikey çizgi mevcut ilerlemeyi gösterir.
+                </p>
+
+                <div class="relative pl-8 border-l-2 border-slate-200 space-y-10">
+                    
+                    <!-- Phase 0 -->
+                    <div class="relative">
+                        <div class="absolute -left-[41px] bg-green-500 h-6 w-6 rounded-full border-4 border-white shadow-sm"></div>
+                        <div class="bg-green-50 p-5 rounded-lg border border-green-100">
+                            <div class="flex justify-between items-start">
+                                <h3 class="font-bold text-green-900">Faz 0: Temel & Kurulum</h3>
+                                <span class="text-xs font-bold bg-green-200 text-green-800 px-2 py-1 rounded">TAMAMLANDI</span>
+                            </div>
+                            <p class="text-sm text-green-800 mt-2">Docker, Nakama, Postgres, Unity Proje Kurulumu.</p>
+                            <ul class="mt-3 text-sm text-green-700 list-disc list-inside">
+                                <li>Docker Desktop Running</li>
+                                <li>Nakama Console (7351) Erişim</li>
+                                <li>Unity SDK Entegrasyonu</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Phase 1 -->
+                    <div class="relative">
+                        <div class="absolute -left-[41px] bg-indigo-600 h-6 w-6 rounded-full border-4 border-white shadow-sm ring-4 ring-indigo-100"></div>
+                        <div class="bg-white p-5 rounded-lg border border-indigo-200 shadow-md">
+                            <div class="flex justify-between items-start">
+                                <h3 class="font-bold text-indigo-900">Faz 1: Hub + Lobby</h3>
+                                <span class="text-xs font-bold bg-indigo-100 text-indigo-600 px-2 py-1 rounded animate-pulse">AKTİF</span>
+                            </div>
+                            <p class="text-sm text-slate-600 mt-2">Basit oda yönetimi ve oyuncu eşleşmesi.</p>
+                            <div class="mt-4 grid grid-cols-2 gap-2 text-xs">
+                                <div class="bg-slate-50 p-2 rounded border border-slate-100">Guest Auth</div>
+                                <div class="bg-slate-50 p-2 rounded border border-slate-100">Room Creation</div>
+                                <div class="bg-slate-50 p-2 rounded border border-slate-100">Presence Check</div>
+                                <div class="bg-slate-50 p-2 rounded border border-slate-100">Match Start State</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Phase 2 -->
+                    <div class="relative">
+                        <div class="absolute -left-[41px] bg-slate-300 h-6 w-6 rounded-full border-4 border-white"></div>
+                        <div class="bg-white p-5 rounded-lg border border-slate-200 opacity-75">
+                            <div class="flex justify-between items-start">
+                                <h3 class="font-bold text-slate-700">Faz 2: Batak Offline Rules</h3>
+                                <span class="text-xs font-bold bg-slate-100 text-slate-500 px-2 py-1 rounded">BEKLEMEDE</span>
+                            </div>
+                            <p class="text-sm text-slate-500 mt-2">Deterministik oyun mantığı (istemci tarafında).</p>
+                            <ul class="mt-3 text-sm text-slate-500 list-disc list-inside">
+                                <li>Deste Dağıtım (13 kart)</li>
+                                <li>Kural dışı hamle engelleme</li>
+                                <li>El alma ve skor hesaplama</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Phase 3 -->
+                    <div class="relative">
+                        <div class="absolute -left-[41px] bg-slate-300 h-6 w-6 rounded-full border-4 border-white"></div>
+                        <div class="bg-white p-5 rounded-lg border border-slate-200 opacity-60">
+                            <h3 class="font-bold text-slate-700">Faz 3: Batak Online (MVP)</h3>
+                            <p class="text-sm text-slate-500 mt-1">4 Kişilik gerçek zamanlı senkronizasyon.</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Phase 4 -->
+                    <div class="relative">
+                        <div class="absolute -left-[41px] bg-slate-300 h-6 w-6 rounded-full border-4 border-white"></div>
+                        <div class="bg-white p-5 rounded-lg border border-slate-200 opacity-40">
+                            <h3 class="font-bold text-slate-700">Faz 4+: Sosyal & Scale</h3>
+                            <p class="text-sm text-slate-500 mt-1">Monetization, Arkadaş Listesi, Okey (Future).</p>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+
+        <!-- METRICS SECTION -->
+        <section id="metrics" class="tab-content hidden space-y-6">
+            <h2 class="text-2xl font-bold text-slate-900">KPI & Kalite Barajları</h2>
+            
+            <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                <p class="text-slate-700 mb-4">
+                    Dokümanda belirtilen <strong>KPI (Anahtar Performans Göstergeleri)</strong> ve Maliyet projeksiyonları.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- KPI Chart -->
+                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                    <h3 class="font-semibold text-slate-900 mb-4">Kalite Hedefleri vs Mevcut (Simülasyon)</h3>
+                    <div class="chart-container h-80">
+                        <canvas id="kpiChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Cost Chart -->
+                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                    <h3 class="font-semibold text-slate-900 mb-4">Maliyet Projeksiyonu (USD/Ay)</h3>
+                    <div class="chart-container h-80">
+                        <canvas id="costChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- PROTOCOL SECTION -->
+        <section id="protocol" class="tab-content hidden space-y-6">
+            <h2 class="text-2xl font-bold text-slate-900">Protokol & Altın Kurallar</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Golden Rules -->
+                <div class="bg-amber-50 p-6 rounded-xl border border-amber-100">
+                    <h3 class="font-bold text-amber-800 text-lg mb-4 flex items-center gap-2">
+                        <span>⚠️</span> Altın Kurallar
+                    </h3>
+                    <ul class="space-y-4">
+                        <li class="flex gap-3">
+                            <span class="font-bold text-amber-600">1.</span>
+                            <span class="text-amber-900 text-sm">Doğrulama olmadan asla sonraki adıma geçme.</span>
+                        </li>
+                        <li class="flex gap-3">
+                            <span class="font-bold text-amber-600">2.</span>
+                            <span class="text-amber-900 text-sm">Her döngü tek bir hedef ve tek bir doğrulama çıktısına sahip olmalıdır.</span>
+                        </li>
+                        <li class="flex gap-3">
+                            <span class="font-bold text-amber-600">3.</span>
+                            <span class="text-amber-900 text-sm">Hata olursa: Nedenler -> Kontrol -> Tek Fix. Uzatmak yok.</span>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Risks -->
+                <div class="bg-red-50 p-6 rounded-xl border border-red-100">
+                    <h3 class="font-bold text-red-800 text-lg mb-4 flex items-center gap-2">
+                        <span>🛡️</span> Risk Yönetimi
+                    </h3>
+                    <ul class="space-y-3">
+                        <li class="p-3 bg-white rounded border border-red-100 text-sm text-red-800">
+                            <strong>Marka Riski:</strong> UNO, Tabu gibi isimler yasak. Özgün isimlendirme şart.
+                        </li>
+                        <li class="p-3 bg-white rounded border border-red-100 text-sm text-red-800">
+                            <strong>Multiplayer State Riski:</strong> Önce offline kurallar, sonra online entegrasyon.
+                        </li>
+                        <li class="p-3 bg-white rounded border border-red-100 text-sm text-red-800">
+                            <strong>Kurulum Riski:</strong> Docker/WSL uyumsuzluğu için adım adım doğrulama.
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- JavaScript Logic -->
+    <script>
+        // --- DATA & STATE ---
+        const runbookTasks = [
+            { id: "F0-1", phase: "Faz 0", desc: "PC Uygunluk Kontrolü", expected: "Sanallaştırma (Virtualization) açık" },
+            { id: "F0-2", phase: "Faz 0", desc: "Docker Desktop Kurulumu", expected: "Docker 'Running'" },
+            { id: "F0-3", phase: "Faz 0", desc: "Klasör Yapısı (Server/Client)", expected: "OyunKutusu/Server & Client mevcut" },
+            { id: "F0-4", phase: "Faz 0", desc: "Nakama + Postgres Compose Up", expected: "http://127.0.0.1:7351 açılıyor" },
+            { id: "F0-5", phase: "Faz 0", desc: "Unity 2022.3 LTS Projesi", expected: "Unity Proje (2D) hatasız açılıyor" },
+            { id: "F0-6", phase: "Faz 0", desc: "Nakama Unity SDK Import", expected: "Package Manager kırmızı hata yok" },
+            { id: "F1-1", phase: "Faz 1", desc: "Guest Auth & Session", expected: "Session ID loglarda görünüyor" },
+            { id: "F1-2", phase: "Faz 1", desc: "Oda Oluştur / Join", expected: "2 kullanıcı presence listesinde" },
+            { id: "F1-3", phase: "Faz 1", desc: "Match Başlatma", expected: "State 'started' olarak değişti" }
+        ];
+
+        let currentTaskIndex = 0;
+        let isProcessing = false;
+
+        // --- NAVIGATION ---
+        function switchTab(tabId) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            // Show selected tab
+            document.getElementById(tabId).classList.remove('hidden');
+            // Update active nav state
+            document.querySelectorAll('.nav-item').forEach(el => {
+                el.classList.remove('bg-indigo-50', 'text-indigo-700');
+                el.classList.add('text-slate-600', 'hover:bg-slate-50');
+            });
+            const activeNav = document.getElementById('nav-' + tabId);
+            activeNav.classList.remove('text-slate-600', 'hover:bg-slate-50');
+            activeNav.classList.add('bg-indigo-50', 'text-indigo-700');
+            
+            // Trigger chart resize if needed
+            if(tabId === 'metrics') {
+                setTimeout(() => {
+                    kpiChart.resize();
+                    costChart.resize();
+                }, 100);
+            }
+        }
+
+        // --- RUNBOOK LOGIC ---
+        function renderTaskList() {
+            const listEl = document.getElementById('task-list');
+            listEl.innerHTML = '';
+            
+            runbookTasks.forEach((task, index) => {
+                let statusClass = "border-slate-200 text-slate-500";
+                let icon = "⚪";
+                let bg = "bg-white";
+
+                if (index < currentTaskIndex) {
+                    statusClass = "border-green-200 text-green-700";
+                    icon = "✅";
+                    bg = "bg-green-50";
+                } else if (index === currentTaskIndex) {
+                    statusClass = "border-indigo-300 text-indigo-700 ring-2 ring-indigo-50";
+                    icon = "🔵";
+                    bg = "bg-white";
+                }
+
+                const item = document.createElement('div');
+                item.className = `p-3 border rounded-lg ${statusClass} ${bg} transition-all duration-300 flex justify-between items-center`;
+                item.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <span>${icon}</span>
+                        <div>
+                            <div class="text-xs font-bold uppercase opacity-70">${task.phase} - ${task.id}</div>
+                            <div class="font-medium text-sm">${task.desc}</div>
+                        </div>
+                    </div>
+                    ${index === currentTaskIndex ? '<span class="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded animate-pulse">Sıradaki</span>' : ''}
+                `;
+                listEl.appendChild(item);
+            });
+            
+            // Update Sidebar Progress
+            const progress = (currentTaskIndex / runbookTasks.length) * 100;
+            document.getElementById('sidebar-progress').style.width = `${progress}%`;
+            
+            if(runbookTasks[currentTaskIndex]) {
+                 document.getElementById('sidebar-active-target').textContent = `${runbookTasks[currentTaskIndex].phase}: ${runbookTasks[currentTaskIndex].id}`;
+                 document.getElementById('runbook-phase-badge').textContent = runbookTasks[currentTaskIndex].phase;
+            } else {
+                 document.getElementById('sidebar-active-target').textContent = "Tüm Görevler Tamamlandı";
+            }
+        }
+
+        function typeWriter(text, element, speed = 30) {
+            let i = 0;
+            element.innerHTML += '<div><span class="text-green-400">agent$</span> ';
+            const span = document.createElement('span');
+            element.lastElementChild.appendChild(span);
+            
+            function type() {
+                if (i < text.length) {
+                    span.innerHTML += text.charAt(i);
+                    i++;
+                    element.scrollTop = element.scrollHeight;
+                    setTimeout(type, speed);
+                } else {
+                    element.innerHTML += '</div>';
+                    isProcessing = false;
+                    document.getElementById('execute-btn').disabled = false;
+                    
+                    // Unlock next task logic
+                    currentTaskIndex++;
+                    renderTaskList();
+                }
+            }
+            type();
+        }
+
+        function executeCurrentTask() {
+            if (isProcessing || currentTaskIndex >= runbookTasks.length) return;
+            
+            isProcessing = true;
+            const btn = document.getElementById('execute-btn');
+            btn.disabled = true;
+            
+            const task = runbookTasks[currentTaskIndex];
+            const terminal = document.getElementById('terminal-output');
+            
+            // Simulation
+            terminal.innerHTML += `<div><span class="text-blue-400">agent$</span> Executing ${task.id}: ${task.desc}...</div>`;
+            terminal.scrollTop = terminal.scrollHeight;
+
+            setTimeout(() => {
+                terminal.innerHTML += `<div class="text-yellow-400">... verifying ...</div>`;
+                terminal.scrollTop = terminal.scrollHeight;
+                
+                setTimeout(() => {
+                    // Success Message
+                    terminal.innerHTML += `<div class="text-green-500 font-bold">[SUCCESS] ${task.expected}</div>`;
+                    isProcessing = false;
+                    currentTaskIndex++;
+                    renderTaskList();
+                    
+                    if (currentTaskIndex < runbookTasks.length) {
+                        btn.disabled = false;
+                        btn.textContent = "Sonraki Adımı Başlat";
+                    } else {
+                         btn.textContent = "Tüm Fazlar Tamamlandı";
+                         terminal.innerHTML += `<div class="text-indigo-400 font-bold mt-4">--- RUNBOOK COMPLETED ---</div>`;
+                    }
+                }, 1500);
+            }, 1000);
+        }
+        
+        function resetRunbook() {
+             currentTaskIndex = 0;
+             document.getElementById('terminal-output').innerHTML = '<div class="opacity-50 text-slate-500">System Reset...</div>';
+             renderTaskList();
+             document.getElementById('execute-btn').disabled = false;
+             document.getElementById('execute-btn').textContent = "Sonraki Adımı Başlat (Execute)";
+        }
+
+        // --- CHARTS ---
+        window.addEventListener('load', () => {
+            renderTaskList();
+
+            // KPI Chart
+            const ctxKPI = document.getElementById('kpiChart').getContext('2d');
+            window.kpiChart = new Chart(ctxKPI, {
+                type: 'bar',
+                data: {
+                    labels: ['Crash-free', 'Match Success', 'Reconnect', 'Match Completion'],
+                    datasets: [
+                        {
+                            label: 'Hedef (Target)',
+                            data: [99, 95, 80, 60],
+                            backgroundColor: 'rgba(99, 102, 241, 0.2)',
+                            borderColor: 'rgba(99, 102, 241, 1)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Mevcut (Simüle)',
+                            data: [99.5, 92, 75, 45], // Simulated current status
+                            backgroundColor: 'rgba(16, 185, 129, 0.5)',
+                            borderColor: 'rgba(16, 185, 129, 1)',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true, max: 100 }
+                    }
+                }
+            });
+
+            // Cost Chart
+            const ctxCost = document.getElementById('costChart').getContext('2d');
+            window.costChart = new Chart(ctxCost, {
+                type: 'line',
+                data: {
+                    labels: ['Faz 0', 'Faz 1', 'Faz 2', 'Faz 3', 'Faz 4'],
+                    datasets: [{
+                        label: 'Tahmini Maliyet (USD)',
+                        data: [5, 12, 12, 15, 35],
+                        borderColor: 'rgb(245, 158, 11)',
+                        tension: 0.1,
+                        fill: false
+                    },
+                    {
+                         label: 'Bütçe Limiti (Max)',
+                         data: [40, 40, 40, 40, 40],
+                         borderColor: 'rgb(239, 68, 68)',
+                         borderDash: [5, 5],
+                         pointRadius: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true, max: 50, title: {display: true, text: 'USD / Ay'} }
+                    }
+                }
+            });
+        });
+
+    </script>
+</body>
+</html>
